@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Prevención de Incendios - Bolivia</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(to right, #2c3e50, #4a6491);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .map-container {
+            grid-column: 1 / -1;
+            height: 500px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .input-panel, .stats-panel {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border: 1px solid #eee;
+        }
+        
+        .panel-title {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        
+        .range-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .range-value {
+            min-width: 60px;
+            text-align: center;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        button {
+            background: linear-gradient(to right, #3498db, #2c3e50);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background: linear-gradient(to right, #2980b9, #34495e);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .data-item {
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .data-label {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .data-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .risk-indicator {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            transition: all 0.5s ease;
+            background: linear-gradient(to right, #95a5a6, #7f8c8d);
+        }
+        
+        .risk-very-low {
+            background: linear-gradient(to right, #27ae60, #2ecc71);
+        }
+        
+        .risk-low {
+            background: linear-gradient(to right, #2ecc71, #f1c40f);
+        }
+        
+        .risk-normal {
+            background: linear-gradient(to right, #f1c40f, #f39c12);
+        }
+        
+        .risk-high {
+            background: linear-gradient(to right, #e67e22, #e74c3c);
+        }
+        
+        .risk-extreme {
+            background: linear-gradient(to right, #e74c3c, #c0392b);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        
+        .progress-container {
+            margin-top: 10px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            height: 10px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        
+        .fire-progress {
+            background: linear-gradient(to right, #e74c3c, #c0392b);
+        }
+        
+        .simulation-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .simulation-controls button {
+            flex: 1;
+        }
+        
+        .map-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            border-radius: 3px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .data-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Sistema de Prevención y Detección de Incendios Forestales</h1>
+            <p class="subtitle">Monitoreo en tiempo real - Bolivia</p>
+        </header>
+        
+        <div class="dashboard">
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="map-overlay">
+                    <h3>Leyenda</h3>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #e74c3c;"></div>
+                            <span>Incendio Activo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-panel">
+                <h2 class="panel-title">Configuración de Datos</h2>
+                
+                <div class="form-group">
+                    <label for="area-select">Seleccionar Área:</label>
+                    <select id="area-select">
+                        <option value="amazonia">Amazonía (Pando, Beni, Norte La Paz)</option>
+                        <option value="chiquitania">Chiquitania (Santa Cruz)</option>
+                        <option value="chaco">Chaco (Tarija, Chuquisaca, Santa Cruz)</option>
+                        <option value="yungas">Yungas (La Paz, Cochabamba)</option>
+                        <option value="altiplano">Altiplano (Oruro, Potosí, La Paz)</option>
+                        <option value="valles">Valles (Cochabamba, Chuquisaca, Tarija)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="temperature">Temperatura (°C):</label>
+                    <div class="range-container">
+                        <input type="range" id="temperature" min="0" max="45" value="25" step="0.5">
+                        <span class="range-value" id="temperature-value">25°C</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="humidity">Humedad (%):</label>
+                    <div class="range-container">
+                        <input type="range" id="humidity" min="5" max="95" value="50" step="1">
+                        <span class="range-value" id="humidity-value">50%</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="wind-speed">Velocidad del Viento (km/h):</label>
+                    <div class="range-container">
+                        <input type="range" id="wind-speed" min="0" max="50" value="10" step="1">
+                        <span class="range-value" id="wind-speed-value">10 km/h</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="vegetation">Índice de Vegetación (%):</label>
+                    <div class="range-container">
+                        <input type="range" id="vegetation" min="0" max="100" value="50" step="1">
+                        <span class="range-value" id="vegetation-value">50%</span>
+                    </div>
+                </div>
+                
+                <button id="simulate-btn">Iniciar Simulación</button>
+                
+                <div class="simulation-controls">
+                    <button id="reset-btn">Reiniciar</button>
+                    <button id="random-btn">Datos Aleatorios</button>
+                </div>
+            </div>
+            
+            <div class="stats-panel">
+                <h2 class="panel-title">Resultados de la Simulación</h2>
+                <div class="data-grid">
+                    <div class="data-item">
+                        <span class="data-label">Temperatura</span>
+                        <span class="data-value" id="result-temperature">--°C</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Humedad</span>
+                        <span class="data-value" id="result-humidity">--%</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Velocidad del Viento</span>
+                        <span class="data-value" id="result-wind-speed">-- km/h</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Índice de Vegetación</span>
+                        <span class="data-value" id="result-vegetation">--%</span>
+                    </div>
+                </div>
+                
+                <div id="risk-indicator" class="risk-indicator">
+                    Esperando datos para evaluación...
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h3>Progreso del Incendio</h3>
+                    <p>Área afectada: <span id="affected-area">0</span> hectáreas</p>
+                    <div class="progress-container">
+                        <div id="fire-progress-bar" class="progress-bar fire-progress" style="width: 0%"></div>
+                    </div>
+                    <p id="fire-status">No se detectan incendios activos</p>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #27ae60;"></div>
+                        <span>Muy Bajo</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #2ecc71;"></div>
+                        <span>Bajo</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #f1c40f;"></div>
+                        <span>Normal</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #e67e22;"></div>
+                        <span>Peligro</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #e74c3c;"></div>
+                        <span>Extremo</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+    // Inicializar el mapa centrado en Bolivia
+    const map = L.map('map').setView([-16.5, -64.5], 6);
+
+    // Añadir capa base
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    // Zonas de Bolivia con coordenadas en áreas de vegetación
+    const boliviaAreas = {
+        'amazonia': { coords: [-11.0, -66.5], name: 'Amazonía (Pando, Beni, Norte La Paz)', vegetation: 85 },
+        'chiquitania': { coords: [-17.8, -61.5], name: 'Chiquitania (Santa Cruz)', vegetation: 75 },
+        'chaco': { coords: [-21.5, -62.5], name: 'Chaco (Tarija, Chuquisaca, Santa Cruz)', vegetation: 70 },
+        'yungas': { coords: [-16.0, -67.3], name: 'Yungas (La Paz, Cochabamba)', vegetation: 80 },
+        'altiplano': { coords: [-17.5, -67.5], name: 'Altiplano (Oruro, Potosí, La Paz)', vegetation: 40 },
+        'valles': { coords: [-17.4, -65.3], name: 'Valles (Cochabamba, Chuquisaca, Tarija)', vegetation: 60 }
+    };
+
+    // Variables globales
+    let fireCircle = null;
+    let fireMarker = null;
+
+    // Calcular riesgo
+    function calculateFireRisk(temperature, humidity, windSpeed, vegetation) {
+        let riskScore = 0;
+
+        if (temperature >= 35) riskScore += 4;
+        else if (temperature >= 30) riskScore += 3;
+        else if (temperature >= 25) riskScore += 2;
+        else if (temperature >= 20) riskScore += 1;
+
+        if (humidity < 20) riskScore += 4;
+        else if (humidity < 35) riskScore += 3;
+        else if (humidity < 50) riskScore += 2;
+        else if (humidity < 65) riskScore += 1;
+
+        if (windSpeed > 30) riskScore += 4;
+        else if (windSpeed > 20) riskScore += 3;
+        else if (windSpeed > 15) riskScore += 2;
+        else if (windSpeed > 10) riskScore += 1;
+
+        if (vegetation > 80) riskScore += 4;
+        else if (vegetation > 60) riskScore += 3;
+        else if (vegetation > 40) riskScore += 2;
+        else if (vegetation > 20) riskScore += 1;
+
+        if (riskScore >= 12) return { level: 'extreme', percentage: 90, label: 'Extremo' };
+        if (riskScore >= 8) return { level: 'high', percentage: 70, label: 'Alto' };
+        if (riskScore >= 5) return { level: 'normal', percentage: 50, label: 'Normal' };
+        if (riskScore >= 3) return { level: 'low', percentage: 30, label: 'Bajo' };
+        return { level: 'very-low', percentage: 10, label: 'Muy Bajo' };
+    }
+
+    // Actualizar zona
+    function updateAreaData(areaId, temperature, humidity, windSpeed, vegetation) {
+        const areaInfo = boliviaAreas[areaId];
+        const risk = calculateFireRisk(temperature, humidity, windSpeed, vegetation);
+
+        // Actualizar valores en el panel de resultados
+        document.getElementById('result-temperature').textContent = `${temperature}°C`;
+        document.getElementById('result-humidity').textContent = `${humidity}%`;
+        document.getElementById('result-wind-speed').textContent = `${windSpeed} km/h`;
+        document.getElementById('result-vegetation').textContent = `${vegetation}%`;
+
+        // Actualizar indicador de riesgo con clase CSS
+        const riskIndicator = document.getElementById('risk-indicator');
+        riskIndicator.textContent = `Riesgo de Incendio: ${risk.label} (${Math.round(risk.percentage)}%)`;
+        riskIndicator.className = `risk-indicator risk-${risk.level}`;
+
+        // Verificar si hay condiciones para incendio activo
+        const hasActiveFire = (risk.level === 'high' || risk.level === 'extreme' || risk.level === 'normal') && vegetation > 40;
+
+        if (hasActiveFire) {
+            let area;
+            if (risk.level === 'extreme') area = 5000;
+            else if (risk.level === 'high') area = 2500;
+            else area = 1000;
+            
+            const radius = Math.sqrt(area * 10000 / Math.PI);
+            updateFireVisualization(areaInfo.coords, radius, areaInfo.name, risk.label);
+        } else {
+            clearFireVisualization();
+            document.getElementById('affected-area').textContent = '0';
+            document.getElementById('fire-progress-bar').style.width = '0%';
+            document.getElementById('fire-status').textContent = 'No se detectan incendios activos';
+        }
+
+        // Centrar mapa en el área seleccionada
+        map.setView(areaInfo.coords, 8);
+    }
+
+    // Mostrar incendio en el mapa
+    function updateFireVisualization(coords, radius, areaName, riskLabel) {
+        clearFireVisualization();
+
+        // Crear círculo rojo del incendio
+        fireCircle = L.circle(coords, {
+            color: '#c0392b',
+            fillColor: '#e74c3c',
+            fillOpacity: 0.6,
+            radius: radius,
+            weight: 3
+        }).addTo(map);
+
+        // Crear marcador en el centro
+        const fireIcon = L.divIcon({
+            className: 'fire-marker',
+            html: `<div style="background-color:#e74c3c;width:30px;height:30px;border-radius:50%;border:3px solid white;box-shadow:0 0 10px rgba(231,76,60,0.7);"></div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        fireMarker = L.marker(coords, { icon: fireIcon })
+            .addTo(map)
+            .bindPopup(`<b>Incendio activo en ${areaName}</b><br>Coordenadas: ${coords[0].toFixed(4)}°, ${coords[1].toFixed(4)}°<br>Área afectada: ${Math.round((Math.PI * radius * radius) / 10000)} ha<br>Nivel de riesgo: ${riskLabel}<br>Se requiere acción inmediata`)
+            .openPopup();
+
+        // Actualizar datos en el panel
+        const affectedArea = Math.round((Math.PI * radius * radius) / 10000);
+        document.getElementById('affected-area').textContent = affectedArea;
+        document.getElementById('fire-progress-bar').style.width = '75%';
+        document.getElementById('fire-status').textContent = `Incendio activo detectado en ${areaName}`;
+    }
+
+    // Borrar incendio
+    function clearFireVisualization() {
+        if (fireCircle) map.removeLayer(fireCircle);
+        if (fireMarker) map.removeLayer(fireMarker);
+        fireCircle = null;
+        fireMarker = null;
+    }
+
+    // Simulación
+    function startSimulation() {
+        const areaId = document.getElementById('area-select').value;
+        const temperature = parseFloat(document.getElementById('temperature').value);
+        const humidity = parseFloat(document.getElementById('humidity').value);
+        const windSpeed = parseFloat(document.getElementById('wind-speed').value);
+        const vegetation = parseFloat(document.getElementById('vegetation').value);
+
+        updateAreaData(areaId, temperature, humidity, windSpeed, vegetation);
+    }
+
+    // Reiniciar
+    function resetSimulation() {
+        document.getElementById('temperature').value = 25;
+        document.getElementById('humidity').value = 50;
+        document.getElementById('wind-speed').value = 10;
+        document.getElementById('vegetation').value = 50;
+        
+        document.getElementById('temperature-value').textContent = '25°C';
+        document.getElementById('humidity-value').textContent = '50%';
+        document.getElementById('wind-speed-value').textContent = '10 km/h';
+        document.getElementById('vegetation-value').textContent = '50%';
+        
+        document.getElementById('result-temperature').textContent = '--°C';
+        document.getElementById('result-humidity').textContent = '--%';
+        document.getElementById('result-wind-speed').textContent = '-- km/h';
+        document.getElementById('result-vegetation').textContent = '--%';
+        
+        document.getElementById('risk-indicator').textContent = 'Esperando datos para evaluación...';
+        document.getElementById('risk-indicator').className = 'risk-indicator';
+        
+        clearFireVisualization();
+        document.getElementById('affected-area').textContent = '0';
+        document.getElementById('fire-progress-bar').style.width = '0%';
+        document.getElementById('fire-status').textContent = 'No se detectan incendios activos';
+        
+        map.setView([-16.5, -64.5], 6);
+    }
+
+    // Datos aleatorios
+    function randomSimulation() {
+        const temp = Math.floor(Math.random() * 40) + 5;
+        const hum = Math.floor(Math.random() * 90) + 5;
+        const wind = Math.floor(Math.random() * 45);
+        const veg = Math.floor(Math.random() * 100);
+        
+        document.getElementById('temperature').value = temp;
+        document.getElementById('humidity').value = hum;
+        document.getElementById('wind-speed').value = wind;
+        document.getElementById('vegetation').value = veg;
+        
+        document.getElementById('temperature-value').textContent = temp + '°C';
+        document.getElementById('humidity-value').textContent = hum + '%';
+        document.getElementById('wind-speed-value').textContent = wind + ' km/h';
+        document.getElementById('vegetation-value').textContent = veg + '%';
+        
+        startSimulation();
+    }
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        // Botones
+        document.getElementById('simulate-btn').addEventListener('click', startSimulation);
+        document.getElementById('reset-btn').addEventListener('click', resetSimulation);
+        document.getElementById('random-btn').addEventListener('click', randomSimulation);
+        
+        // Actualizar valores en tiempo real
+        document.getElementById('temperature').addEventListener('input', (e) => {
+            document.getElementById('temperature-value').textContent = e.target.value + '°C';
+        });
+        
+        document.getElementById('humidity').addEventListener('input', (e) => {
+            document.getElementById('humidity-value').textContent = e.target.value + '%';
+        });
+        
+        document.getElementById('wind-speed').addEventListener('input', (e) => {
+            document.getElementById('wind-speed-value').textContent = e.target.value + ' km/h';
+        });
+        
+        document.getElementById('vegetation').addEventListener('input', (e) => {
+            document.getElementById('vegetation-value').textContent = e.target.value + '%';
+        });
+    });
+    </script>
+</body>
+</html>
